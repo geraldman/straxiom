@@ -1,0 +1,19 @@
+# VM artifacts
+*.vdi
+*.vmdk
+*.ova
+*.ovf
+*.iso
+*.box
+.vagrant/
+# Secrets
+.env
+*.pem
+*.key
+.vault_pass*
+# Python
+.venv/
+__pycache__/
+# Misc
+*.log
+*.retry

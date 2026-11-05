@@ -1,0 +1,47 @@
+# STRAXIOM: Decision Log
+
+Every design decision gets a row: date, what was decided, why, which brief sections it affects, and what could reverse it. "Brief" means the project brief, currently v1.2. Append new rows at the bottom, and never rewrite an old one. If a decision changes, add a new row that supersedes it.
+
+Options considered were not captured for D-001 to D-020. From D-021 on, add an "Options considered" note to the Decision cell.
+
+## Decisions
+
+| ID | Date | Decision | Reason | Affects | Reversible by |
+| --- | --- | --- | --- | --- | --- |
+| D-001 | 2026-11-04 | Usable RAM is about 13.9 GB (5.9 in use, 8.0 available), not 16 GB. Pre-flight checks available RAM at launch plus a headroom margin | Measured on the host. About 2 GB is hardware-reserved | 3, 4, 5, 14 | BIOS change to the iGPU carve-out, or Check 3 results |
+| D-002 | 2026-11-04 | Schedule assumed at 30+ hours per week with no blocked days (unverified, engineer's statement) | Needed to set the cut list | 2, 13 | The engineer saying otherwise. The cut list applies at the end of week 2 |
+| D-003 | 2026-11-04 | Stay on the Hyper-V backend (NEM) with Memory Integrity on. No NEM vs native comparison for now | Cost in host security and time outweighs an abstract benchmark. Check 3 measures the real workload | 3, 14.1 | Tripwire: slow ingestion or Postgres writes in Check 3 |
+| D-004 | 2026-11-04 | The pre-existing Ubuntu 22.04 VM was used only as a benchmark instrument and is retired (OVA backup made) | Valid for backend comparison only, not for sizing | 14.1 | A project VM showing I/O behavior the benchmark did not predict |
+| D-005 | 2026-11-04 | Disk flush limitation: about 213 synced 4K writes/s, fsync p99 about 6 ms, cause not isolated. Investigation closed | Time-box ended. Host drive not saturated, so the cause is likely in the VirtualBox path (unconfirmed) | 3, 5, 14 | Tripwire in Check 3 |
+| D-006 | 2026-11-04 | Host I/O cache on for lab VMs | Raised disk throughput from about 6/4 to about 9/6 MiB/s. Trade-off: a host crash can corrupt a disposable VM disk | 5 | Corruption seen, or a better fix found |
+| D-007 | 2026-11-04 | Base OS is Ubuntu 24.04.4 live server with the GA kernel, not HWE. 24.04.5 skipped | Tool support verified for Wazuh, Zeek, Suricata and the box. A newer kernel adds eBPF variability. The 24.04.5 desktop image was pulled, server status unverified | 5, 6, 15 | Sysmon check failing, or a verified fix in a later point release |
+| D-008 | 2026-11-04 | Wazuh pinned to 4.x. A 5.x migration is a post-project idea | 5.x moves rules to the indexer and the manager stops storing alerts, breaking manager to alerts.json to Vector | 2.3, 4, 9, 14 | A verified 5.x design that keeps a manager-only path |
+| D-009 | 2026-11-04 | Check 3 stack VM: 4608 MB, 3 vCPUs, 25 GB dynamic disk. Final stack VM sized from measurement, with `disk_gb` added to `lab.yml` | No official manager-only Wazuh sizing for 4.x | 4, 5, 14 | Check 3 results |
+| D-010 | 2026-11-04 | The temporary NAT adapter is a logged internet path, removed before evaluation | Isolation rule in Section 3 | 3, 15 | None planned |
+| D-011 | 2026-11-04 | Repo at `C:\dev\straxiom` (planned as `C:\dev\opensentinel` before D-019), VM artifacts in `C:\lab-vms\`, both outside OneDrive. `.gitignore` and `.gitattributes` come first | Avoid committing VM disks, sync conflicts and CRLF breakage | 15 | None planned |
+| D-012 | 2026-11-04 | Vagrant's default synced folder is disabled on every VM | A compromised victim could write to the host through a mounted repo | 5, 11, 15 | None planned |
+| D-013 | 2026-11-04 | Second-laptop networking and Tailscale scope are deferred. If a second PC arrives: own Vagrant, dedicated cable or standalone switch, never bridged. Tailscale only for model and management, never on victims | Isolation and scope guard | 3, 15 | The hardware arriving, or a verified safer design |
+| D-014 | 2026-11-05 | Root LVM extended to the full disk (12 GB to 23 GB). The 2.3 GB `/swap.img` is kept and monitored with `vmstat` during Check 3 | Installer pitfall. Swap activity is a Check 3 signal, and swap writes add load to a flush-bound disk (D-005) | 5, 14.1 | Check 3 showing swap pressure |
+| D-015 | 2026-11-05 | Lab CIDR is 192.168.100.0/24 (host adapter .1, stack .10, Linux victim .21, Windows victim .31) | Engineer changed it during setup. Cause of the original 192.168.56.x failure unknown. A 169.254.x.x range was rejected (link-local) | 3, 4, 5, 15 | A found cause, or an overlap with a Windows adapter |
+| D-016 | 2026-11-05 | Sysmon for Linux 1.5.3 is the process and network sensor. Verified on 24.04.4, kernel 6.8.0-147-generic | Check B passed with a unique-marker test. Events 1, 11, 16 pass and 5 is absent as configured. Events 3 and 4 not yet tested | 6.1, 7 | Kernel change, or a failed Event 3 or 4 test |
+| D-017 | 2026-11-05 | Sysmon collects events 1, 3 and 100 in full, 11 path-filtered, 16 always on. Event 5 off. 22 and 23 deferred. Event 100 was not observed, so no detection may depend on it | Collect what a detection consumes. DNS is covered by Zeek. Event 23 archives files | 6.1, 7 | Check 3 volume data, or a rule needing a deferred event |
+| D-018 | 2026-11-05 | No custom Sysmon replacement. A 2-hour bpftrace detour is optional, after Check 3 | Scope guard. The sensor is not the thesis | 13.2 | Slack in the schedule after week 2 |
+| D-019 | 2026-11-05 | Project renamed from OpenSentinel to STRAXIOM. The long-form expansion wording is still under review | Engineer's choice. No repo existed yet, so the rename cost nothing. The draft expansion ("Autonomous eXecution") conflicts with the no-autonomous-remediation non-goal | Title, 15, 16 | Name clearance finding a conflict before public release |
+| D-020 | 2026-11-05 | Project code is licensed Apache-2.0 | Others are expected to reuse and build on it. The explicit patent grant protects forks and contributors, and it works with the AGPL OpenObserve service kept separate | 15 | Before the first public release only. Relicensing later needs every contributor's consent |
+
+## Pending decisions
+
+| Decision | Settle by |
+| --- | --- |
+| Sysmon path to OpenObserve: Wazuh agent (decoded, alerts only) or Vector direct (raw events) | Before writing `pipeline/` configs, during Check 3 |
+| Ansible control location (`ansible_local`, stack VM, or Mac) | Before writing roles, week 1 |
+| Wazuh exact 4.x patch version and manager sizing | Check 3 |
+| Wording of the STRAXIOM expansion (D-019) | Before the README is written |
+| Auto-close policy | Before building the triage agent |
+| Case store (Postgres or SQLite) | Week 1 |
+| Tailscale scope and access rules | When the gateway skeleton is built, week 1 |
+
+## Notes
+
+- Keep account names, recovery contacts and any secrets out of this file, because the repo will be public. Record only that a decision was made.
+- Dates are the date the decision was made, not the date it was written up.
