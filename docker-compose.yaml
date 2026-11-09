@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:17
+    environment: [POSTGRES_PASSWORD]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve:latest
+    environment: [ZO_ROOT_USER_EMAIL, ZO_ROOT_USER_PASSWORD, ZO_DATA_DIR]  
+    volumes: [o2data:/data]
+    ports: ["192.168.100.10:5000:5000"]
+
+  vector:
+    image: timberio/vector:latest-alpine
+    volumes:
+      - ./vector/vector.yaml:/etc/vector/vector.yaml:ro
+      - ./testdata:/testdata:ro
+    depends_on: [openobserve]
+
+volumes: { pgdata: {}, o2data: {} }
