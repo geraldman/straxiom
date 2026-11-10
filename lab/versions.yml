@@ -1,0 +1,26 @@
+# Pinned container image versions for the straxiom stack VM.
+# Tag + digest recorded at pull time, per CLAUDE.md "Pin everything".
+# Do not bump a tag here without re-pulling and re-recording the digest.
+
+host:
+  os: Ubuntu 24.04.4 LTS (server, GA kernel)
+  kernel: 6.8.0-147-generic
+
+images:
+  postgres:
+    repository: docker.io/library/postgres
+    tag: "17.11"
+    digest: sha256:ff87138949ad9a46f32ff23bd6852b52ce024a13dffe9b4087be98292cdd3b4f
+    pulled: 2026-11-10
+
+  vector:
+    repository: docker.io/timberio/vector
+    tag: "0.61.0-alpine"
+    digest: sha256:3bb7ed5152910ed51729e256937b1d8a4bf67ff624e9d565e8e5877bffd015c7
+    pulled: 2026-11-10
+
+  openobserve:
+    repository: public.ecr.aws/zinclabs/openobserve
+    tag: v1.1.2
+    digest: sha256:4a154849432f75c4fb024de32fe34163c02406c905dab22bf8d213d2e3386392
+    pulled: 2026-11-10
