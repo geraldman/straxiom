@@ -30,6 +30,10 @@ Options considered were not captured for D-001 to D-020. From D-021 on, add an "
 | D-020 | 2026-11-05 | Project code is licensed Apache-2.0 | Others are expected to reuse and build on it. The explicit patent grant protects forks and contributors, and it works with the AGPL OpenObserve service kept separate | 15 | Before the first public release only. Relicensing later needs every contributor's consent |
 | D-021 | 2026-11-10 | Check 3 / pipeline infra (`docker-compose.yaml`, Vector config, `versions.yml`) lives permanently in the repo under `lab/` and `pipeline/`, not in `~/check3/` outside any repo. Options considered: brief's draft throwaway-then-copy proposal vs. building the real scaffolding directly | Avoids a throwaway-then-migrate step; Check 3's feasibility result and the real pipeline become the same artifact | 14.1, 15 | A future need for a disposable spike area (e.g. if the Sysmon path decision forces a rework) |
 | D-022 | 2026-11-10 | Real `.env` stays gitignored at repo root rather than physically outside the tracked working tree. Options considered: move `.env` outside the repo clone entirely (stricter reading of the hard rule) vs. keep relying on `.gitignore` at the current location | Simpler, matches common practice; `.env` stays mode 600 and ungitted either way | CLAUDE.md hard rules, 15 | A secret leak incident, or a misconfigured `.gitignore` exposing it |
+| D-023 | 2026-11-10 | Check 3 covers the full §14.1 setup: Wazuh manager, OpenObserve, Vector and Postgres, plus one 2048 MB victim. Metrics, pass criteria and tripwires are written in `docs/feasibility.md` before the run. Options considered: narrow to the three services already running vs. the full setup | A three-service run cannot answer the D-009 sizing question. Renumbers the brief v1.3 draft D-021 | 14.1 | None planned |
+| D-024 | 2026-11-10 | Wazuh manager and agent pinned to 4.14.10, with the digest recorded in `lab/versions.yml`. Options considered: 4.14.10, 4.10.5 (older line), 5.0.0-rc2 | Newest stable 4.x. 5.x is excluded by D-008, and release candidates by the pinning rule. Sizing still comes from Check 3 | 2.3, 5, 14.1 | A security fix in a later 4.x patch |
+| D-025 | 2026-11-11 | Tunable run parameters (thresholds, rates, intervals) live in one committed file per check, `eval/feasibility/<check>/params.env`, with no secrets. Secrets stay only in `.env` (D-022). Options considered: all values in the gitignored `.env`, or values written directly into `docs/feasibility.md` | Commit history proves the thresholds were fixed before the run. One place to tune, kept apart from secrets | 14.1, 15, operating rule 6 | A test harness that needs a structured format (for example YAML) |
+| D-026 | 2026-11-11 | Lab time source is chrony. The stack VM serves time to the host-only network and the victim syncs to it. Victim offset must be under 100 ms before any latency measurement. Options considered: measure the clock offset and correct afterwards, or VirtualBox Guest Additions time sync | Latency depends on the two VM clocks agreeing. The network is isolated during evaluation, and Guest Additions would add a host-to-guest channel | 3, 14.1, evaluation | A measured offset that chrony cannot hold under load |
 
 ## Pending decisions
 
@@ -37,7 +41,7 @@ Options considered were not captured for D-001 to D-020. From D-021 on, add an "
 | --- | --- |
 | Sysmon path to OpenObserve: Wazuh agent (decoded, alerts only) or Vector direct (raw events) | Before writing `pipeline/` configs, during Check 3 |
 | Ansible control location (`ansible_local`, stack VM, or Mac) | Before writing roles, week 1 |
-| Wazuh exact 4.x patch version and manager sizing | Check 3 |
+| Wazuh manager sizing (patch version settled in D-024) | Check 3 |
 | Wording of the STRAXIOM expansion (D-019) | Before the README is written |
 | Auto-close policy | Before building the triage agent |
 | Case store (Postgres or SQLite) | Week 1 |
