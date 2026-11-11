@@ -1,12 +1,23 @@
 sources:
-  demo:
-    type: demo_logs
-    format: json
-    interval: 1
+  testdata:
+    type: file
+    include: ["/testdata/*.log"]
+    read_from: beginning
 
 sinks:
-  console:
-    type: console
-    inputs: [demo]
+  openobserve:
+    type: http
+    inputs: [testdata]
+    uri: http://openobserve:5080/api/default/default/_json
+    method: post
+    auth:
+      strategy: basic
+      user: "${ZO_ROOT_USER_EMAIL}"
+      password: "${ZO_ROOT_USER_PASSWORD}"
+    compression: gzip
     encoding:
       codec: json
+      timestamp_format: rfc3339
+    healthcheck:
+      enabled: true
+      uri: http://openobserve:5080/healthz

@@ -12,6 +12,8 @@ services:
 
   vector:
     image: timberio/vector:0.61.0-alpine@sha256:3bb7ed5152910ed51729e256937b1d8a4bf67ff624e9d565e8e5877bffd015c7
+    # Vector >= 0.57 does not expand ${VAR} in its config unless this is set (credentials come from .env)
+    environment: [ZO_ROOT_USER_EMAIL, ZO_ROOT_USER_PASSWORD, VECTOR_DANGEROUSLY_ALLOW_ENV_VAR_INTERPOLATION=true]
     volumes:
       - ./vector/vector.yaml:/etc/vector/vector.yaml:ro
       - ./testdata:/testdata:ro
