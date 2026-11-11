@@ -88,7 +88,9 @@ Secondary question (pending decision "Sysmon path to OpenObserve"): what does th
 ### Time-box (operating rule 10)
 
 - First budget: one working day, stopping at hour 4 if not ingesting. Started about 2026-11-09 (start time not recorded). Exceeded, mainly because of the DNS failure on `enp0s3` (brief v1.4 §14.1).
-- Second attempt: started 2026-11-10 23:53 (UTC+7), hard stop 2026-11-11 03:53 (4 hours). If the marker test is not passing by the stop, record where it is stuck as a limitation and move on.
+- Second attempt: 2026-11-10 23:53 to 2026-11-11 03:53 (UTC+7). Lapsed unused: the window went to pre-registration (D-023 to D-026), and no ingest work happened in it.
+- Third attempt: 2-hour budget. The engineer started the clock at 2026-11-11 12:00 (UTC+7), but the Vector logs show stack work already under way at 11:42 (container recreated at 04:42 UTC). The marker was searchable in OpenObserve at about 12:08 (written 05:07:46 UTC, picked up by Vector at 05:07:48 UTC), so it passed within budget whichever start time is used.
+- Third attempt causes: (1) the root Docker daemon created the missing bind-mount folder `./testdata` as root, so the user's marker write failed (fixed with `chown` and a tracked `testdata/.gitkeep`, see D-027); (2) a startup race: `depends_on` orders container start, not readiness, so Vector's first healthcheck got "Connection refused" while OpenObserve was booting. Harmless; data flowed once OpenObserve was up. Left as is for now.
 
 ### Definition of done
 

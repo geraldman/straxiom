@@ -1,3 +1,5 @@
+name: straxiom
+
 services:
   postgres:
     image: postgres:17.11@sha256:ff87138949ad9a46f32ff23bd6852b52ce024a13dffe9b4087be98292cdd3b4f
@@ -15,8 +17,8 @@ services:
     # Vector >= 0.57 does not expand ${VAR} in its config unless this is set (credentials come from .env)
     environment: [ZO_ROOT_USER_EMAIL, ZO_ROOT_USER_PASSWORD, VECTOR_DANGEROUSLY_ALLOW_ENV_VAR_INTERPOLATION=true]
     volumes:
-      - ./vector/vector.yaml:/etc/vector/vector.yaml:ro
-      - ./testdata:/testdata:ro
+      - ../pipeline/vector.yaml:/etc/vector/vector.yaml:ro
+      - ../testdata:/testdata:ro
     depends_on: [openobserve]
 
 volumes: { pgdata: {}, o2data: {} }
