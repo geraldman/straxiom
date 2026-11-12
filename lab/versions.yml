@@ -24,3 +24,9 @@ images:
     tag: v1.1.2
     digest: sha256:4a154849432f75c4fb024de32fe34163c02406c905dab22bf8d213d2e3386392
     pulled: 2026-11-10
+
+  wazuh-manager:
+    repository: docker.io/wazuh/wazuh-manager
+    tag: "4.14.10"
+    digest: sha256:dcda4869e2f792e92f03bce93f85b4bdf103756ea61cfca8ba9f3eabeb05365b
+    pulled: 2026-11-12

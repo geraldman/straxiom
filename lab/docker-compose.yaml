@@ -23,4 +23,45 @@ services:
       - vectordata:/var/lib/vector
     depends_on: [openobserve]
 
-volumes: { pgdata: {}, o2data: {}, vectordata: {} }
+  wazuh:
+    image: wazuh/wazuh-manager:4.14.10@sha256:dcda4869e2f792e92f03bce93f85b4bdf103756ea61cfca8ba9f3eabeb05365b
+    # fixed name: the image puts it in the enrollment certificate it generates
+    hostname: wazuh-manager
+    # D-030: replaces the default API users; ':?' makes compose refuse to start if unset (fail closed)
+    environment:
+      - API_USERNAME=${WAZUH_API_USER:?set WAZUH_API_USER in .env (D-030)}
+      - API_PASSWORD=${WAZUH_API_PASSWORD:?set WAZUH_API_PASSWORD in .env (D-030)}
+    # 1514 agent events, 1515 enrollment. Never 55000 (API), 1516 (cluster) or 514/udp (syslog)
+    ports: ["192.168.100.10:1514:1514", "192.168.100.10:1515:1515"]
+    # D-030: own network, so no other container can reach the API
+    networks: [wazuh]
+    # the image's own permanent-data list (permanent_data.env); without these, a recreate un-enrolls every agent
+    volumes:
+      - wazuh_api_config:/var/ossec/api/configuration
+      - wazuh_etc:/var/ossec/etc
+      - wazuh_logs:/var/ossec/logs
+      - wazuh_queue:/var/ossec/queue
+      - wazuh_agentless:/var/ossec/agentless
+      - wazuh_multigroups:/var/ossec/var/multigroups
+      - wazuh_integrations:/var/ossec/integrations
+      - wazuh_active_response:/var/ossec/active-response/bin
+      - wazuh_wodles:/var/ossec/wodles
+      - wazuh_filebeat_etc:/etc/filebeat
+
+volumes:
+  pgdata: {}
+  o2data: {}
+  vectordata: {}
+  wazuh_api_config: {}
+  wazuh_etc: {}
+  wazuh_logs: {}
+  wazuh_queue: {}
+  wazuh_agentless: {}
+  wazuh_multigroups: {}
+  wazuh_integrations: {}
+  wazuh_active_response: {}
+  wazuh_wodles: {}
+  wazuh_filebeat_etc: {}
+
+networks:
+  wazuh: {}
