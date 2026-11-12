@@ -19,6 +19,8 @@ services:
     volumes:
       - ../pipeline/vector.yaml:/etc/vector/vector.yaml:ro
       - ../testdata:/testdata:ro
+      # checkpoints: without this, a recreate re-reads /testdata from the beginning and duplicates events
+      - vectordata:/var/lib/vector
     depends_on: [openobserve]
 
-volumes: { pgdata: {}, o2data: {} }
+volumes: { pgdata: {}, o2data: {}, vectordata: {} }
