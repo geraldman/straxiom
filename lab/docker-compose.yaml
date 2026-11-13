@@ -47,6 +47,8 @@ services:
       - wazuh_active_response:/var/ossec/active-response/bin
       - wazuh_wodles:/var/ossec/wodles
       - wazuh_filebeat_etc:/etc/filebeat
+      # D-031: vendor-supported override; the image copies /wazuh-config-mount/* over /var/ossec at every start
+      - ./wazuh/ossec.conf:/wazuh-config-mount/etc/ossec.conf:ro
 
 volumes:
   pgdata: {}
