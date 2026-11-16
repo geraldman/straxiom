@@ -87,12 +87,12 @@ The committed decision log overrides the brief where they disagree, because the 
 Update this block at the end of every session.
 
 ```
-Week: 2 (assumes week 1 began 2026-11-04; confirm)
-Phase: Check 3 (B1). Stack VM up; Postgres, Vector and OpenObserve containers run. Ingest has never worked: vector/vector.yaml is still the demo_logs -> console stub
-Last completed (2026-11-11): images pinned by tag and digest in lab/versions.yml (Postgres 17.11, Vector 0.61.0, OpenObserve); D-021 to D-026 logged; Check 3 pre-registered in docs/feasibility.md and eval/feasibility/check3/params.env
-Blockers: none hard. The second time-box (stop 2026-11-11 03:53) passed with no ingest work done
-Open: record that time-box as exceeded and set a fresh one; engineer commits decisions.md, feasibility.md, params.env; Wazuh manager in compose plus digest in versions.yml; Docker engine and Compose versions in versions.yml; git mv into lab/ and pipeline/ (add top-level `name: straxiom` to the compose file); Sysmon path; Ansible control location; Sysmon Events 3 and 4 tests; DNS fix not yet recorded (brief v1.4 reserve row); unlogged brief proposals (see decision_log_rules); rename in brief
-Next: 1) set a fresh time-box, 2) engineer writes the Vector file -> http sink config, Claude reviews, run the marker test, 3) add the Wazuh manager, pull, record its digest
+Week: 2, day 12 of 28 (week 1 began 2026-11-04). Behind plan: no week 1 exit criterion from brief §13.1 is met yet
+Phase: Check 3 (B1). The stack VM runs Postgres, Vector, OpenObserve and the Wazuh manager (D-030, D-031). No victim VM exists. Vector ships only /testdata, not Wazuh alerts.json, so the wazuh_alerts stream does not exist. The load run has not happened
+Last completed (2026-11-15): D-032 (SSH-login ingest markers) written but uncommitted; load scripts activity.sh and ssh-fail.sh written but untracked; host and repo audit; master todo list written to brief/RUNBOOK.md (local only). Earlier: stack-side marker test passed 2026-11-11; Vector checkpoint fix verified 2026-11-12; files moved to lab/ and pipeline/ (D-021); D-027 to D-031 logged
+Blockers: no victim VM; Vector does not read alerts.json; the "pagefile flat" pass criterion has no number yet
+Open: end date and scope decision due 2026-11-17 (mentor recommendation: fixed 2026-12-30 with the stretch tier cut); engineer commits decisions.md, feasibility.md and the two scripts; fresh Check 3 time-box and the 3-hour victim-build time-box not yet accepted; clipboard, drag-and-drop and NAT port-forward 2222 on the stack VM to close; Docker engine, Compose, VirtualBox, Sysmon, agent and chrony versions in versions.yml; README is empty; Sysmon path; Ansible control location; Sysmon Events 3 and 4 tests; unlogged rows (DNS fix, storage tool parked 2026-11-13, D-011 path drift, baseline snapshots, pin all images, no hosted API so the hosted baseline and experiment E5 drop out); rename in brief
+Next: 1) wazuh-logtest with the two sample sshd lines (brief/RUNBOOK.md Task 1.8 step 0), 2) engineer commits the four pending files and sets the time-box, 3) close the host-to-guest channels, then clone and re-identify the victim (RUNBOOK Tasks 0.3 and 1.2 to 1.6)
 ```
 </current_status>
 
@@ -118,10 +118,11 @@ Each rule has a reason. Teach the reason when a rule comes up, because the engin
 <decision_log_rules>
 `docs/decisions.md` is append-only. Never rewrite an old row. To change a decision, add a new row that supersedes it. Columns: ID, Date (when decided), Decision (from D-021 on, include "Options considered"), Reason, Affects (brief sections), Reversible by. Propose rows in chat, and write them to the file only after the engineer agrees.
 
-The log runs to D-026, so the next free ID is D-027. The brief patches used their own numbering, which does not match the log. Use the log's IDs, never the brief's. Status of the brief's draft rows:
+The log runs to D-032, so the next free ID is D-033. The brief patches used their own numbering, which does not match the log. Use the log's IDs, never the brief's. Status of the brief's draft rows:
 
-- Already covered: v1.3 D-020 (= D-020), v1.3 D-021 (logged as D-023), v1.4 D-022 (duplicates D-019), v1.4 D-023 (declined by D-021).
-- Not logged yet: v1.3 D-019 (`clean-os-baseline` snapshot), v1.4 D-024 (pin all images; followed as a hard rule but not logged), v1.4 D-025 (DNS fix record), v1.4 D-026 (`docker` group trade-off, log only if chosen).
+- Already covered: v1.3 D-020 (= D-020), v1.3 D-021 (logged as D-023), v1.4 D-022 (duplicates D-019), v1.4 D-023 (declined by D-021), v1.4 D-026 (`docker` group trade-off, settled by D-027).
+- Not logged yet: v1.3 D-019 (`clean-os-baseline` snapshot), v1.4 D-024 (pin all images; followed as a hard rule but not logged), v1.4 D-025 (DNS fix record).
+- Chosen in a session but never written: parking the storage prediction tool with a sizing note (2026-11-13). It was drafted as D-032, but D-032 is now the SSH-marker row, so it needs the next free ID.
 </decision_log_rules>
 
 <lab_facts>
@@ -129,8 +130,8 @@ The log runs to D-026, so the next free ID is D-027. The brief patches used thei
 - Network: host-only `192.168.100.0/24`. Host adapter `.1`, stack `.10`, Linux victim `.21`, Windows victim `.31`. In VMs, `enp0s8` is host-only (no default route) and `enp0s3` is the temporary NAT. Check routing with `ip route get 192.168.100.1`, which must say `dev enp0s8`.
 - Base OS: Ubuntu 24.04.4 server, GA kernel `6.8.0-147-generic`. PEP 668 applies, so use venvs or pipx, never system `pip`.
 - Pinned: Wazuh 4.14.10, manager only, no 5.x (D-008, D-024). Sysmon for Linux 1.5.3 (schema 4.90). Wazuh 4.14.10 has no Sysmon-for-Linux decoders (unverified listing), which matters for the pending Sysmon-path decision.
-- Stack VM: the repo is cloned at `~/dev/straxiom`, and Check 3 infra runs from it (D-021). `.env` stays out of git (D-022).
-- Current file locations: `docker-compose.yaml` at the repo root and `vector/vector.yaml`. They move to `lab/` and `pipeline/` per D-021 after the marker test passes.
+- Stack VM: the repo is cloned at `~/dev/straxiom`, and Check 3 infra runs from it (D-021). The real `.env` sits at the repo root, out of git (D-022), and `lab/.env` is a per-clone symlink to it (D-028). Docker runs through `sudo` (D-027).
+- Current file locations (moved per D-021): `lab/docker-compose.yaml` (project name `straxiom`), `pipeline/vector.yaml`, `lab/wazuh/ossec.conf` (mounted read-only, D-031) and `lab/versions.yml`. Run compose from `lab/`.
 - Lab time: chrony on the stack VM serves the host-only network. Victim offset must be under 100 ms before any latency measurement (D-026).
 - In VMs, work as a normal user with `sudo`, never a root shell.
 - Claude Code runs on the Windows host, not in the VMs. Give the engineer commands to run over SSH, explain what each one does, and ask for the pasted output instead of assuming results.

@@ -8,7 +8,7 @@ Tunable values (thresholds, rates, intervals) live in one committed file per che
 
 ## Check 3: stack sizing (B1)
 
-Decisions: D-009 (VM size under test), D-014 (swap watch), D-005 / D-003 (disk tripwire), D-023 (scope), D-024 (Wazuh pin).
+Decisions: D-009 (VM size under test), D-014 (swap watch), D-005 / D-003 (disk tripwire), D-023 (scope), D-024 (Wazuh pin), D-032 (ingest-latency markers).
 
 Parameters: `eval/feasibility/check3/params.env`. Record the commit of that file used for the run under Conditions.
 
@@ -51,7 +51,7 @@ Secondary question (pending decision "Sysmon path to OpenObserve"): what does th
      - Sysmon Event 3: `curl -s http://$STACK_IP:$OPENOBSERVE_PORT/healthz`.
      - Commit the script before the run and record its path here: `TODO(engineer)`.
 4. Read the metrics at about the 10-minute mark of the load.
-5. Ingest latency: write `MARKER_COUNT` (at least 5) unique markers on the victim, spaced `MARKER_SPACING_S` apart, starting at minute 1 of the load. Spreading them across the whole window is meant to prevent a false pass: markers bunched in a quiet minute would miss a disk that backs up later in the run. For each one, record the time it was written and the time it became searchable in OpenObserve.
+5. Ingest latency: write `MARKER_COUNT` (at least 5) unique markers on the victim, spaced `MARKER_SPACING_S` apart, starting at minute 1 of the load. Spreading them across the whole window is meant to prevent a false pass: markers bunched in a quiet minute would miss a disk that backs up later in the run. For each one, record the time it was written and the time it became searchable in OpenObserve. (Amended 2026-11-15 before any Check 3 data, D-032: see Notes.)
 6. Snapshot the stack VM after the run.
 
 ### Metrics
@@ -99,6 +99,7 @@ Secondary question (pending decision "Sysmon path to OpenObserve"): what does th
 - A one-line verdict: pass, swap/OOM, or tripwire.
 - A decision-log row for the final stack size (updates D-009).
 - A stack VM snapshot taken after the run.
+- The `marker-0` dry run arrived in `wazuh_alerts` before the load run.
 
 ### Notes
 
@@ -106,6 +107,7 @@ Secondary question (pending decision "Sysmon path to OpenObserve"): what does th
 - **Vector checkpoints (found 2026-11-11, fixed and verified 2026-11-12).** The Vector image declares no `VOLUME`, so file-source checkpoints lived in the container's writable layer. The 2026-11-11 06:07Z recreate re-shipped `smoke.log` from the beginning (`read_from: beginning` applies whenever no checkpoint exists), and markers written before it had `COUNT = 2` in OpenObserve. Fix: named volume `vectordata` at `/var/lib/vector`, with `data_dir` set explicitly in `pipeline/vector.yaml`. Verified: after `--force-recreate`, marker counts were unchanged and a new marker arrived once. Checkpoint `position` was 104, matching 4 lines × 26 bytes. **Run rules:** let Vector start once with the volume before the run, so the first start's full re-read happens outside the measurement; never set `ignore_checkpoints` during a run; `docker compose down -v` deletes both the checkpoints and OpenObserve's data.
 - **Wazuh vulnerability detection filled the stack disk (2026-11-12, before the run).** With the image's default `ossec.conf`, the vulnerability scanner starts at first boot. It unpacks `/var/ossec/tmp/vd_1.0.0_vd_4.13.0.tar.xz` (483 MB, shipped inside the image) into the container's writable layer. The unpacked file reached 10.59 GB in about 8 minutes, then failed with `Write failed` when `/` hit 100% (25 GB disk, D-009). Its full size is unknown. A `.env` saved while the disk was full was left at 0 bytes, and then re-created with mode 664. Also seen at startup: indexer-connector retries, Filebeat retrying `wazuh.indexer`, and SCA and rootcheck scans of the manager's own container.
 - **Amendment 2026-11-13, before any Check 3 data (D-031).** Setup said "Manager vulnerability detection disabled." The manager now runs agent-facing functions only. Vulnerability detection, the indexer connector, syscollector, SCA, rootcheck, syscheck and the manager's own `localfile` entries are off. Reason: the vulnerability scanner filled the disk on first start, and the other modules scan the manager container itself, not the victims.
+- **Amendment 2026-11-15, before any Check 3 data (D-032).** Step 5 said markers are "written on the victim". Wazuh writes only rule matches to `alerts.json`, so a marker line written to a file on the victim would never reach OpenObserve. Each marker is now a failed SSH login from the stack with a unique username, `marker-<n>` (n = 1 to `MARKER_COUNT`), which the stock sshd "Invalid user" rule turns into an alert (rule ID **unverified**, confirmed by the dry run). Write time is the start of the ssh call on the stack. Searchable time is when a query for `marker-<n>` in the `wazuh_alerts` stream first returns it. Both times come from the stack clock. The earlier stack-side marker test (`/testdata`) covered only Vector → OpenObserve. Pre-run check: one dry run with `marker-0` must appear in OpenObserve before the load run.
 
 ### Results
 
