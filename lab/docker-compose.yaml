@@ -21,6 +21,7 @@ services:
       - ../testdata:/testdata:ro
       # checkpoints: without this, a recreate re-reads /testdata from the beginning and duplicates events
       - vectordata:/var/lib/vector
+      - wazuh_logs:/wazuh_logs:ro
     depends_on: [openobserve]
 
   wazuh:

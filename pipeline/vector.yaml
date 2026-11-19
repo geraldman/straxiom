@@ -5,6 +5,17 @@ sources:
     type: file
     include: ["/testdata/*.log"]
     read_from: beginning
+  wazuh_alerts_file:
+    type: file
+    include: ["/wazuh-logs/alerts/alerts.json"]
+    read_from: beginning
+
+transforms: 
+  wazuh_parse:
+    type: remap
+    inputs: [wazuh_alerts_file]
+    source:
+      . = parse.json!(.message)
 
 sinks:
   openobserve:
@@ -23,3 +34,19 @@ sinks:
     healthcheck:
       enabled: true
       uri: http://openobserve:5080/healthz
+  openobserve_wazuh:
+    type: http
+    inputs: [wazuh_parse]
+    uri: http://openobserve:5080/api/default/wazuh_alerts/_json
+    method: post
+    auth:
+      strategy: basic
+      user: "${ZO_ROOT_USER_EMAIL}"
+      password: "${ZO_ROOT_USER_PASSWORD}"
+    compression: gzip
+    encoding:
+      codec: json
+      timestamp_format: rfc3339
+    healthcheck:
+      enabled: true
+      uri: http://openobserve:5080/healthz  
