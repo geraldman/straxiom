@@ -10,19 +10,19 @@ SOC teams are adopting LLM agents to triage alerts. But an agent that reads atta
 
 1. A reproducible lab (VMs plus Docker Compose) that produces endpoint and network telemetry in OpenObserve.
 2. Detection-as-code: about 10 rules, tested in CI, with measured precision and false-positive rate.
-3. A UEBA-style baseline that enriches alerts.
+3. A UEBA-style baseline that enriches alerts (off by default for v1.0; should-have tier per D-033).
 4. An agentic triage and hunting system with analyst approval, a full audit trail, and hard guardrails.
 5. A repeatable red-team suite covering five attack categories, with before-and-after results across defense layers D0 to D5.
-6. Reusable LLM monitoring (OpenTelemetry-based) demonstrated on a small RAG app.
-7. A small specialized local model, prompted first and fine-tuned only if a go/no-go gate justifies it.
+6. Reusable LLM monitoring (OpenTelemetry-based) demonstrated on a small RAG app (moved to future work per D-033).
+7. A prompted local model for v1.0, with fine-tuning moved to future work (D-033).
 
 ## Priority tiers
 
 | Tier | Items |
 | --- | --- |
 | Must-have | Pipeline to OpenObserve, about 10 detections with CI, triage agent with an allowlisted query tool and audit log, red-team harness covering all five categories, threat model, README, demo |
-| Should-have | UEBA, natural-language hunting, approval UI, notifications, CI running the red-team suite |
-| Stretch | Full Suricata coverage, RAG app detections, ATT&CK heatmap, live Windows victim, fine-tune |
+| Should-have (off by default, D-033) | UEBA, natural-language hunting, approval UI, notifications, CI running the red-team suite (re-enabled only if a dated gate is met early) |
+| Stretch (cut for v1.0 / future work, D-033) | Full Suricata coverage, RAG app and its detections, ATT&CK heatmap, live Windows victim, fine-tune |
 
 ## Non-goals
 
@@ -47,7 +47,7 @@ SOC teams are adopting LLM agents to triage alerts. But an agent that reads atta
 
 ## Constraints
 
-- One engineer, full-time, 30+ hours a week, four weeks (the schedule is the engineer's statement, unverified).
+- One engineer, full-time, 30+ hours a week, originally four weeks from 2026-11-04, extended to a fixed end date of 2027-01-06 (D-033; the schedule is the engineer's statement, unverified).
 - Lab laptop with about 13.9 GB usable RAM (about 8.0 GB available for VMs). One Linux victim at a time next to the stack VM.
 - Isolated host-only lab network (192.168.100.0/24). Any internet path is allowlisted and logged. During evaluation, the only allowed route is to the model host.
 - Mostly free tooling. A hosted API baseline and a cloud GPU for fine-tuning are optional.
