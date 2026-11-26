@@ -22,7 +22,7 @@ Secondary question (pending decision "Sysmon path to OpenObserve"): what does th
 
 - Stack VM: Ubuntu 24.04.4, kernel 6.8.0-147-generic, 4608 MB, 3 vCPUs, host I/O cache on (D-006), host-only NIC `192.168.100.10`.
 - Compose services: Wazuh manager, OpenObserve, Vector, Postgres. No Wazuh indexer or dashboard. Manager vulnerability detection disabled.
-- Images: exact tags and digests from `lab/versions.yml` at commit `TODO(engineer): sha`.
+- Images: exact tags and digests from `lab/versions.yml` at commit `9e1588e`.
 - Exposure: OpenObserve publishes only `192.168.100.10:5080`. Wazuh publishes only `192.168.100.10:1514` and `192.168.100.10:1515`. Postgres, Vector and the Wazuh API (55000) publish nothing.
 - Victim: manual clone of the baseline, 2048 MB, `192.168.100.21`, with Wazuh agent 4.14.10, auditd and Sysmon for Linux 1.5.3 (D-016, D-017), enrolled to the manager.
 - Isolation: NAT removed from both VMs before the run. `ip route get 192.168.100.1` shows `dev enp0s8` on both.
@@ -49,7 +49,7 @@ Secondary question (pending decision "Sysmon path to OpenObserve"): what does th
      - Sysmon Event 1: `ls /etc`, `ps aux`, `cat /etc/os-release` (output discarded).
      - Sysmon Event 11: create and then delete `${ACTIVITY_TMP_PREFIX}<n>`. `/tmp/` is an included path in the Sysmon config.
      - Sysmon Event 3: `curl -s http://$STACK_IP:$OPENOBSERVE_PORT/healthz`.
-     - Commit the script before the run and record its path here: `TODO(engineer)`.
+     - Committed scripts: `eval/feasibility/check3/activity.sh` (victim) and `eval/feasibility/check3/ssh-fail.sh` (stack).
 4. Read the metrics at about the 10-minute mark of the load.
 5. Ingest latency: write `MARKER_COUNT` (at least 5) unique markers on the victim, spaced `MARKER_SPACING_S` apart, starting at minute 1 of the load. Spreading them across the whole window is meant to prevent a false pass: markers bunched in a quiet minute would miss a disk that backs up later in the run. For each one, record the time it was written and the time it became searchable in OpenObserve. (Amended 2026-11-15 before any Check 3 data, D-032: see Notes.)
 6. Snapshot the stack VM after the run.
@@ -64,12 +64,12 @@ Secondary question (pending decision "Sysmon path to OpenObserve"): what does th
 | Disk | stack | `iostat -x $SAMPLE_INTERVAL_S` during load | `w_await`, `r_await` (ms), `%util` |
 | OOM kills | stack, victim | `journalctl -k \| grep -i oom` or `dmesg` | count |
 | Host RAM and pagefile | Windows host | `Get-Counter` every `SAMPLE_INTERVAL_S` over the load window, exported to CSV: `\Memory\Available MBytes`, `\Memory\Pages Input/sec`, `\Paging File(_Total)\% Usage` | min available MB, Pages Input/sec, CSV committed as evidence |
-| Sysmon events per ID | victim to OpenObserve | `TODO(engineer): query or count method` | count per event ID |
-| Ingest latency | victim to OpenObserve | marker write time vs. time searchable | median and max over at least 5 markers |
+| Sysmon events per ID | victim to OpenObserve | Victim source: `sudo journalctl -t sysmon --since "<T0>" --until "<T0+15m>" -o cat \| grep -o '<EventID>[0-9]*</EventID>' \| sort \| uniq -c`. Sink (`wazuh_alerts`): `SELECT count(*) FROM "wazuh_alerts" WHERE str_match(full_log, 'Sysmon') OR str_match(location, 'sysmon')`. Pre-registered hypothesis: sink count is 0 because Wazuh 4.14.10 has no Sysmon-for-Linux decoder | count per event ID (source) and total (sink) |
+| Ingest latency | victim to OpenObserve | marker write time vs. time searchable in `wazuh_alerts` (`data_srcuser = 'marker-<n>'`, polled every `MARKER_POLL_INTERVAL_S` = 0.5 s; upper bound with ~0.6 s resolution) | median and max over at least 5 markers |
 
 ### Pass criteria (brief v1.3 §14.1)
 
-- Host `\Memory\Available MBytes` stays above `HOST_MIN_AVAILABLE_MB` in every sample, with no pagefile activity (`\Memory\Pages Input/sec` and `\Paging File(_Total)\% Usage` flat over the load window).
+- Host `\Memory\Available MBytes` stays above `HOST_MIN_AVAILABLE_MB` in every sample, with no sustained pagefile activity: `\Paging File(_Total)\% Usage` rises by at most `HOST_PAGEFILE_MAX_RISE_PCT` percentage points over the load window AND median `\Memory\Pages Input/sec` during load stays at or below `HOST_PAGES_INPUT_MAX_MEDIAN` (amended 2026-11-26 before any Check 3 data; see Notes).
 - `vmstat` `si` and `so` near 0 on both guests. "Near 0" means: in the load window, `si` and `so` are 0 in every sample except at most `SWAP_MAX_NONZERO_SAMPLES` isolated non-zero sample(s) per guest.
 - No OOM kills in either guest.
 
@@ -91,6 +91,7 @@ Secondary question (pending decision "Sysmon path to OpenObserve"): what does th
 - Second attempt: 2026-11-10 23:53 to 2026-11-11 03:53 (UTC+7). Lapsed unused: the window went to pre-registration (D-023 to D-026), and no ingest work happened in it.
 - Third attempt: 2-hour budget. The engineer started the clock at 2026-11-11 12:00 (UTC+7), but the Vector logs show stack work already under way at 11:42 (container recreated at 04:42 UTC). The marker was searchable in OpenObserve at about 12:08 (written 05:07:46 UTC, picked up by Vector at 05:07:48 UTC), so it passed within budget whichever start time is used.
 - Third attempt causes: (1) the root Docker daemon created the missing bind-mount folder `./testdata` as root, so the user's marker write failed (fixed with `chown` and a tracked `testdata/.gitkeep`, see D-027); (2) a startup race: `depends_on` orders container start, not readiness, so Vector's first healthcheck got "Connection refused" while OpenObserve was booting. Harmless; data flowed once OpenObserve was up. Left as is for now.
+- Fourth attempt: 2-working-day Phase 1 budget. Fresh victim VM (`straxiom-victim-linux-1`), Sysmon 1.5.3, Wazuh agent 4.14.10, Chrony (< 1 ms offset), Vector `alerts.json` pipeline, and `marker-0` live dry run completed on 2026-11-25/26 (`marker-0` arrived in `wazuh_alerts` at 2026-11-26 07:03Z).
 
 ### Definition of done
 
@@ -99,7 +100,7 @@ Secondary question (pending decision "Sysmon path to OpenObserve"): what does th
 - A one-line verdict: pass, swap/OOM, or tripwire.
 - A decision-log row for the final stack size (updates D-009).
 - A stack VM snapshot taken after the run.
-- The `marker-0` dry run arrived in `wazuh_alerts` before the load run.
+- The `marker-0` dry run arrived in `wazuh_alerts` before the load run (verified 2026-11-26: `rule_id = "5710"`, `data_srcuser = "marker-0"`, `"total": 1`).
 
 ### Notes
 
@@ -108,6 +109,8 @@ Secondary question (pending decision "Sysmon path to OpenObserve"): what does th
 - **Wazuh vulnerability detection filled the stack disk (2026-11-12, before the run).** With the image's default `ossec.conf`, the vulnerability scanner starts at first boot. It unpacks `/var/ossec/tmp/vd_1.0.0_vd_4.13.0.tar.xz` (483 MB, shipped inside the image) into the container's writable layer. The unpacked file reached 10.59 GB in about 8 minutes, then failed with `Write failed` when `/` hit 100% (25 GB disk, D-009). Its full size is unknown. A `.env` saved while the disk was full was left at 0 bytes, and then re-created with mode 664. Also seen at startup: indexer-connector retries, Filebeat retrying `wazuh.indexer`, and SCA and rootcheck scans of the manager's own container.
 - **Amendment 2026-11-13, before any Check 3 data (D-031).** Setup said "Manager vulnerability detection disabled." The manager now runs agent-facing functions only. Vulnerability detection, the indexer connector, syscollector, SCA, rootcheck, syscheck and the manager's own `localfile` entries are off. Reason: the vulnerability scanner filled the disk on first start, and the other modules scan the manager container itself, not the victims.
 - **Amendment 2026-11-15, before any Check 3 data (D-032).** Step 5 said markers are "written on the victim". Wazuh writes only rule matches to `alerts.json`, so a marker line written to a file on the victim would never reach OpenObserve. Each marker is now a failed SSH login from the stack with a unique username, `marker-<n>` (n = 1 to `MARKER_COUNT`), which the stock sshd "Invalid user" rule turns into an alert (rule ID **unverified**, confirmed by the dry run). Write time is the start of the ssh call on the stack. Searchable time is when a query for `marker-<n>` in the `wazuh_alerts` stream first returns it. Both times come from the stack clock. The earlier stack-side marker test (`/testdata`) covered only Vector → OpenObserve. Pre-run check: one dry run with `marker-0` must appear in OpenObserve before the load run.
+- **Amendment 2026-11-26, before any Check 3 data (dry run + marker query).** The `marker-0` dry run confirmed Wazuh rule `5710` (level 5) and OpenObserve flattened fields `rule_id = "5710"`, `data_srcuser = "marker-0"`, and `full_log`, with `"total"` in the `_search` response envelope. Under load (`ssh-fail.sh`), Wazuh escalates repeated failures from the same IP to rules `5712` or `40111`, so the marker tool queries by `data_srcuser = 'marker-<n>'` (or `str_match(full_log, 'marker-<n>')` for `n <= 9`) rather than `rule_id`. Polling every `MARKER_POLL_INTERVAL_S` (0.5 s) makes each recorded latency an upper bound with ~0.6 s resolution.
+- **Amendment 2026-11-26, before any Check 3 data ("pagefile flat").** `\Memory\Pages Input/sec` also counts normal memory-mapped file reads on Windows (idle host checks showed 0 to 3.55/s), so strict zero is unmeasurable. "No sustained pagefile activity" is pre-registered as `\Paging File(_Total)\% Usage` rising by at most `HOST_PAGEFILE_MAX_RISE_PCT` (2.0 percentage points) over the load window AND median `\Memory\Pages Input/sec` during load staying at or below `HOST_PAGES_INPUT_MAX_MEDIAN` (20/s).
 
 ### Results
 
