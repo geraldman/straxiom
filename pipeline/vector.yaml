@@ -14,8 +14,8 @@ transforms:
   wazuh_parse:
     type: remap
     inputs: [wazuh_alerts_file]
-    source:
-      . = parse.json!(.message)
+    source: |
+      . = parse_json!(.message)
 
 sinks:
   openobserve:
