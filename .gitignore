@@ -19,3 +19,5 @@ __pycache__/
 *.retry
 # internal notes
 brief/
+graphify-out/
+.graphifyignore
